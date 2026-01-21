@@ -49,6 +49,18 @@ pip install -r requirements.txt
 python ids.py
 ```
 
+---
+
+## Running with Docker
+
+You can run the entire system (Backend, Dashboard, and IDS Engine) using Docker Compose.
+
+```bash
+docker-compose up --build
+```
+
+> **Note:** The IDS container runs in `privileged` mode with `network_mode: host` to allow for real-time packet sniffing.
+
 ## Port Configuration
 
 | Component     | Port | Description            |

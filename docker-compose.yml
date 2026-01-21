@@ -12,6 +12,17 @@ services:
     networks:
       - ids-network
 
+  dashboard:
+    build:
+      context: ./Dashboard
+    ports:
+      - "3001:3001"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+    restart: always
+    networks:
+      - ids-network
+
   ids-engine:
     build:
       context: ./IDS
