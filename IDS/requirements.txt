@@ -1,0 +1,6 @@
+scapy==2.5.0
+pandas==2.0.3
+numpy==1.25.2
+geoip2==4.7.0
+scikit-learn==1.3.0
+requests==2.31.0

@@ -1,0 +1,1 @@
+Timestamp,Flow_ID,Prediction,Confidence,Is_Malicious,Severity_Score,Recommended_Action,Src_IP,Src_Port,Src_Country,Src_Country_Name,Src_City,Src_Latitude,Src_Longitude,Dst_IP,Dst_Port,Protocol,Protocol_Number,Duration,Total_Packets,Total_Bytes,Fwd_Packets,Bwd_Packets,Flow_Bytes_Per_Sec,Flow_Packets_Per_Sec

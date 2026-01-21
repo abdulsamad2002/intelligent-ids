@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.vscode/
+.idea/
+output/
+.git/
+.gitignore

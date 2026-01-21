@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./Backend
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./Backend/.env
+    restart: always
+    networks:
+      - ids-network
+
+  ids-engine:
+    build:
+      context: ./IDS
+    network_mode: "host" # IDS needs host network mode to sniff packets
+    privileged: true # Needs privileges for packet capture
+    depends_on:
+      - backend
+    environment:
+      - BACKEND_URL=http://localhost:3000
+    volumes:
+      - ./IDS/output:/app/output
+    restart: always
+
+networks:
+  ids-network:
+    driver: bridge
