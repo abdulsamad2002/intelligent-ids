@@ -51,12 +51,15 @@ python ids.py
 
 ## Port Configuration
 
-| Component     | Port  | Description            |
-| :------------ | :---- | :--------------------- |
-| **Backend**   | 3000  | API & WebSocket Server |
-| **Dashboard** | 3001  | Next.js Web Interface  |
-| **Database**  | 27017 | MongoDB (Local/Docker) |
+| Component     | Port | Description            |
+| :------------ | :--- | :--------------------- |
+| **Backend**   | 3000 | API & WebSocket Server |
+| **Dashboard** | 3001 | Next.js Web Interface  |
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-**Build with Performance & Security in mind.**
+**Built with Performance & Security in mind.**
