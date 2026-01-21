@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+/* Custom Scrollbar Styles - Absolute Global Force */
+html, body, div, main, aside, section, nav {
+  scrollbar-width: thin !important;
+  scrollbar-color: #555555 transparent !important;
+}
+
+*::-webkit-scrollbar {
+  width: 12px !important;
+  height: 12px !important;
+  display: block !important;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #555555 !important;
+  border-radius: 10px !important;
+  border: 3px solid transparent !important;
+  background-clip: content-box !important;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #ffffff !important;
+}
+
+/* Ensure secondary scrollbars also follow the theme */
+.overflow-auto::-webkit-scrollbar,
+.overflow-scroll::-webkit-scrollbar {
+  width: 12px !important;
+}
+
+/* Selection Polish */
+::selection {
+  background-color: rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+}

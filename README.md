@@ -1,4 +1,4 @@
-# Guardian IDS 🛡️
+# Guardian IDS
 
 **Advanced Intrusion Detection System & Real-Time Monitoring Platform**
 
@@ -6,20 +6,20 @@ Guardian IDS is a high-performance network security platform designed to detect,
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 - **Dashboard (Next.js)**: High-fidelity React interface with real-time telemetry, interactive bar charts for attack timelines, and live threat streams.
 - **Backend (Node.js/Express)**: Core API handling data persistence, authentication, and real-time communication via Socket.IO.
 - **IDS Engine (Python)**: Intelligent packet inspection engine that performs feature extraction and threat classification.
 
-## ✨ Key Features
+## Key Features
 
 - **Real-Time Visualization**: Dynamic Attack Timeline and classification charts.
 - **Live Activity Stream**: Instant visibility into network flows and identified malicious activity.
 - **Threat Intelligence**: Integrated IP intelligence and automated blocking mechanisms.
 - **Premium UI**: Sleek dark-mode interface with custom animations and optimized navigation.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Backend Server
 
@@ -49,7 +49,7 @@ pip install -r requirements.txt
 python ids.py
 ```
 
-## 🛤️ Port Configuration
+## Port Configuration
 
 | Component     | Port  | Description            |
 | :------------ | :---- | :--------------------- |
