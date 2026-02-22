@@ -8,7 +8,7 @@ const blockedIPSchema = new mongoose.Schema({
   blocked_at: { type: Date, default: Date.now, index: true },
   blocked_until: { type: Date }, // null = permanent
   is_permanent: { type: Boolean, default: false },
-  blocked_by: { type: String, default: 'auto' }, // 'auto' or 'manual'
+  blocked_by: { type: String, default: 'auto' },
   
   // Related flow that triggered the block
   flow_id: { type: String },
