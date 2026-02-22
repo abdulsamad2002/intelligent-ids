@@ -46,7 +46,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
-*.swo
 
 # Optional: Docker
 .dockerignore

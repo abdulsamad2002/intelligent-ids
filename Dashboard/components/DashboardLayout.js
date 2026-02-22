@@ -7,7 +7,6 @@ import Sidebar from './Sidebar';
 const DashboardLayout = ({ children }) => {
   const pathname = usePathname();
   
-  // Don't show sidebar on login page or home page (which redirects)
   const isLoginPage = pathname === '/login';
   const isHomePage = pathname === '/';
   
