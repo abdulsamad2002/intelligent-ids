@@ -25,7 +25,8 @@ def calculate_severity(result):
         'Bot': 6.0,
         'FTP-Patator': 7.0,
         'SSH-Patator': 7.5,
-        'Heartbleed': 9.0
+        'Heartbleed': 9.0,
+        'Anomaly': 8.0
     }
     
     base_severity = severity_map.get(attack_type, 6.0)
@@ -170,26 +171,18 @@ def log_message(backend_url, message, level='info'):
 
 def print_alert(alert, backend_sent=False, backend_url=None):
     """Print colored alert to console and send to backend logs"""
-    backend_status = "✓ Sent to backend" if backend_sent else "✗ Backend offline (saved to file)"
+    backend_status = "[OK] Sent to backend" if backend_sent else "[-] Backend offline (saved to file)"
     
     lines = [
         f"\n{'='*70}",
-        f"  ⚠️  MALICIOUS TRAFFIC DETECTED",
+        f"  [!] MALICIOUS TRAFFIC DETECTED",
         f"{'='*70}",
         f"Attack Type: {alert['attack_type']}",
         f"Confidence: {alert['confidence']:.1%} | Severity: {alert['severity_score']}/10",
-        f"Action: {alert['recommended_action'].upper()}",
         f"Source: {alert['src_ip']}:{alert['src_port']} ({alert['src_city']}, {alert['src_country']})",
-        f"Destination: {alert['dst_ip']}:{alert['dst_port']}",
-        f"Protocol: {alert['protocol']} | Packets: {alert['total_packets']:,} | Bytes: {alert['total_bytes']:,}",
         f"Backend: {backend_status}",
-        f"Top Probabilities:"
+        f"{'='*70}\n"
     ]
-    
-    sorted_probs = sorted(alert['class_probabilities'].items(), key=lambda x: x[1], reverse=True)[:3]
-    for attack, prob in sorted_probs:
-        lines.append(f"  - {attack}: {prob:.1%}")
-    lines.append(f"{'='*70}\n")
     
     full_message = "\n".join(lines)
     print(full_message)

@@ -3,12 +3,20 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Shield, Activity, AlertTriangle, Ban, FileText, Search, ChevronLeft, ChevronRight, User } from 'lucide-react';
+import { Shield, Activity, AlertTriangle, Ban, FileText, Search, ChevronLeft, ChevronRight, User, LogOut } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const Sidebar = () => {
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [user] = useState({ name: 'Admin User', email: 'admin@guardian.ids' });
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    router.push('/login');
+  };
 
   const navItems = [
     { id: 'dashboard', icon: Activity, label: 'Dashboard', path: '/dashboard' },
@@ -58,8 +66,8 @@ const Sidebar = () => {
         ))}
       </nav>
 
-      {/* User Profile */}
-      <div className="p-4 border-t border-neutral-800">
+      {/* User Profile & Logout */}
+      <div className="p-4 border-t border-neutral-800 space-y-4">
         <div className={`flex items-center gap-3 ${sidebarCollapsed ? 'justify-center' : ''}`}>
           <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center">
             <User size={20} className="text-neutral-400" />
@@ -71,6 +79,15 @@ const Sidebar = () => {
             </div>
           )}
         </div>
+
+        <button
+          onClick={handleLogout}
+          className={`w-full flex items-center gap-3 px-4 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors ${sidebarCollapsed ? 'justify-center' : ''}`}
+          title={sidebarCollapsed ? 'Logout' : ''}
+        >
+          <LogOut size={20} />
+          {!sidebarCollapsed && <span className="text-sm">Logout</span>}
+        </button>
       </div>
 
       {/* Collapse Button */}

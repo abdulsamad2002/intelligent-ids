@@ -53,7 +53,7 @@ def send_to_backend(backend_url, flow_data):
         if response.status_code in [200, 201]:
             return True
         else:
-            print(f"[!] Backend returned status {response.status_code}")
+            # print(f"[!] Backend returned status {response.status_code}")
             return False
             
     except requests.exceptions.ConnectionError:
@@ -62,6 +62,30 @@ def send_to_backend(backend_url, flow_data):
         return False
     except Exception as e:
         print(f"[!] Backend error: {e}")
+        return False
+
+def send_batch_to_backend(backend_url, flow_batch):
+    """Send a list of flows in a single HTTP request"""
+    if not flow_batch:
+        return True
+        
+    try:
+        headers = {
+            'Content-Type': 'application/json',
+            'X-IDS-Key': IDS_API_KEY
+        }
+        
+        response = requests.post(
+            f"{backend_url}/api/flows/batch",
+            json=flow_batch,
+            timeout=5,
+            headers=headers
+        )
+        
+        return response.status_code in [200, 201]
+            
+    except Exception as e:
+        print(f"[!] Batch send failed: {e}")
         return False
 
 def send_log_to_backend(backend_url, message, level='info'):

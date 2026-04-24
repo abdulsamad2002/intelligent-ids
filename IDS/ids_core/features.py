@@ -35,7 +35,10 @@ def extract_features(f):
         idle_stats = calc_stats(f['idle_times'])
         
         features = {
+            "Source Port": int(f['src_port']),
             "Destination Port": int(f['dst_port']),
+            "Protocol": int(f['protocol']),
+            "Destination Port.1": int(f['dst_port']),
             "Flow Duration": dur * 1e6,
             "Total Fwd Packets": int(f['fwd_packets']),
             "Total Backward Packets": int(f['bwd_packets']),
@@ -90,7 +93,7 @@ def extract_features(f):
             "Average Packet Size": safe_divide(tot_bytes, tot_pkt),
             "Avg Fwd Segment Size": safe_divide(f['fwd_bytes'], f['fwd_packets']),
             "Avg Bwd Segment Size": safe_divide(f['bwd_bytes'], f['bwd_packets']),
-            "Fwd Header Length.1": int(f['fwd_header_bytes']),  # Renamed to avoid duplicate
+            "Fwd Header Length.1": int(f['fwd_header_bytes']),
             "Fwd Avg Bytes/Bulk": 0,
             "Fwd Avg Packets/Bulk": 0,
             "Fwd Avg Bulk Rate": 0,

@@ -7,7 +7,6 @@ const emailService = require('./emailService');
 
 class SchedulerService {
   init() {
-    console.log('\n⏰ Scheduler Service: Initialized');
 
     // 1. Check for expired IP blocks every hour
     // Runs at minute 0 of every hour

@@ -38,7 +38,6 @@ function initWebSocket(server) {
     });
   });
 
-  console.log('✓ WebSocket server initialized');
   return io;
 }
 

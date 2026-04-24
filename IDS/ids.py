@@ -13,6 +13,9 @@ import time
 # Ensure we can import ids_core from current directory
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+# Set Keras backend to torch since TensorFlow is not available on Python 3.14
+os.environ['KERAS_BACKEND'] = 'torch'
+
 from ids_core.detector import RealtimeIDS
 
 if __name__ == "__main__":
@@ -28,12 +31,12 @@ EXAMPLES:
     sudo python ids.py --list
         """)
     
-    parser.add_argument('-m', '--model', required=True,
-                        help='Path to Random Forest model pickle file')
-    parser.add_argument('-f', '--features', required=True,
-                        help='Path to selected features pickle file')
-    parser.add_argument('-e', '--encoder', required=True,
-                        help='Path to label encoder pickle file')
+    parser.add_argument('--anomaly-model', default='Anomaly Detection Model/anomaly_detector_model.keras',
+                        help='Path to Anomaly Detector model .keras file')
+    parser.add_argument('--anomaly-scaler', default='Anomaly Detection Model/data_scaler.pkl',
+                        help='Path to Anomaly Detector scaler pickle file')
+    parser.add_argument('--anomaly-threshold', default='Anomaly Detection Model/anomaly_threshold.pkl',
+                        help='Path to Anomaly Detector threshold pickle file')
     parser.add_argument('--geoip-db', default='GeoDB/GeoLite2-City.mmdb',
                         help='Path to GeoIP2 database (default: GeoDB/GeoLite2-City.mmdb)')
     parser.add_argument('--backend-url', default='http://localhost:3000',
@@ -78,10 +81,10 @@ EXAMPLES:
             print("Error: scapy not installed. Cannot list interfaces.")
             sys.exit(1)
     
-    # Validate files
-    for fpath, fname in [(args.model, 'Model'), 
-                         (args.features, 'Features'), 
-                         (args.encoder, 'Encoder')]:
+    # Validate anomaly detection files
+    for fpath, fname in [(args.anomaly_model, 'Anomaly Model'), 
+                         (args.anomaly_scaler, 'Anomaly Scaler'), 
+                         (args.anomaly_threshold, 'Anomaly Threshold')]:
         if not os.path.exists(fpath):
             print(f"\n[!] Error: {fname} file not found: {fpath}\n")
             sys.exit(1)
@@ -92,9 +95,9 @@ EXAMPLES:
     
     try:
         ids = RealtimeIDS(
-            model_path=args.model,
-            features_path=args.features,
-            encoder_path=args.encoder,
+            anomaly_model_path=args.anomaly_model,
+            anomaly_scaler_path=args.anomaly_scaler,
+            anomaly_threshold_path=args.anomaly_threshold,
             geoip_db_path=args.geoip_db,
             backend_url=args.backend_url,
             enable_backend=not args.no_backend,

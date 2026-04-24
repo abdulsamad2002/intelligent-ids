@@ -6,9 +6,6 @@ class AutoBlockService {
     this.enabled = process.env.AUTO_BLOCK_ENABLED === 'true';
     this.threshold = parseFloat(process.env.AUTO_BLOCK_THRESHOLD || 8.5);
     
-    console.log(`\n🛡️  Auto-Block Service:`);
-    console.log(`   Enabled: ${this.enabled}`);
-    console.log(`   Threshold: ${this.threshold}/10`);
   }
 
   async shouldBlock(flow) {

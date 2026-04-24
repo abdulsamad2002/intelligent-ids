@@ -20,12 +20,12 @@ from .utils import safe_divide, get_flow_key
 from .geo import get_geolocation
 from .features import extract_features
 from .alerting import create_enhanced_alert, create_csv_record, print_alert, save_to_json, log_message
-from .backend import check_backend_health, send_to_backend
+from .backend import check_backend_health, send_to_backend, send_batch_to_backend
 
 warnings.filterwarnings('ignore')
 
 class RealtimeIDS:
-    def __init__(self, model_path, features_path, encoder_path, 
+    def __init__(self, anomaly_model_path=None, anomaly_scaler_path=None, anomaly_threshold_path=None,
                  geoip_db_path='GeoLite2-City.mmdb',
                  backend_url='http://localhost:3000',
                  enable_backend=True,
@@ -33,6 +33,7 @@ class RealtimeIDS:
                  csv_output='all_flows.csv',
                  features_output='ml_features.csv',
                  save_interval=10, flow_timeout=120, confidence_threshold=0.7):
+        
         
         self.flows = {}
         self.backend_url = backend_url
@@ -55,49 +56,59 @@ class RealtimeIDS:
             'backend_posts': 0, 'backend_failures': 0
         }
         
-        # Load model components
-        print(f"\n{'='*70}")
-        print(f"  REAL-TIME INTRUSION DETECTION SYSTEM")
-        print(f"{'='*70}")
-        print(f"[*] Loading model components...")
+        # Batch Processing
+        self.benign_buffer = []
+        self.buffer_lock = threading.Lock()
+        self.batch_size = 50
         
-        try:
-            with open(model_path, 'rb') as f:
-                self.model = pickle.load(f)
-            print(f"    ✓ Model loaded: {model_path}")
-            
-            with open(features_path, 'rb') as f:
-                self.selected_features = pickle.load(f)
-            print(f"    ✓ Features loaded: {len(self.selected_features)} features")
-            
-            with open(encoder_path, 'rb') as f:
-                self.label_encoder = pickle.load(f)
-            print(f"    ✓ Label encoder loaded")
-            
-            self.attack_classes = self.label_encoder.classes_
-            print(f"    ✓ Attack classes: {list(self.attack_classes)}")
-            
-            self.model_loaded = True
-            
-        except Exception as e:
-            print(f"    ✗ Error loading model: {e}")
-            self.model_loaded = False
-            sys.exit(1)
+        
+        # Load Anomaly Detector components
+        self.anomaly_detector_loaded = False
+        
+        if all([anomaly_model_path, anomaly_scaler_path, anomaly_threshold_path]):
+            # Check if files exist
+            if not all([os.path.exists(p) for p in [anomaly_model_path, anomaly_scaler_path, anomaly_threshold_path]]):
+                print(f"\n[!] Warning: Some anomaly detector files not found. Skipping.")
+                # for p in [anomaly_model_path, anomaly_scaler_path, anomaly_threshold_path]:
+                #     print(f"    - {p}: {'Found' if os.path.exists(p) else 'Not Found'}")
+            else:
+                print(f"\n[*] Loading Anomaly Detector components...")
+                try:
+                    import keras
+                    import joblib
+                    
+                    # Load Keras model
+                    self.anomaly_model = keras.models.load_model(anomaly_model_path)
+                    print(f"    [+] Anomaly model loaded: {anomaly_model_path}")
+                    
+                    # Load Scaler
+                    self.anomaly_scaler = joblib.load(anomaly_scaler_path)
+                    print(f"    [+] Anomaly scaler loaded: {anomaly_scaler_path}")
+                    
+                    # Load Threshold
+                    with open(anomaly_threshold_path, 'rb') as f:
+                        self.anomaly_threshold = pickle.load(f)
+                    print(f"    [+] Anomaly threshold loaded: {self.anomaly_threshold}")
+                    
+                    self.anomaly_detector_loaded = True
+                except Exception as e:
+                    print(f"    [-] Error loading anomaly detector: {e}")
+                    print(f"    [!] Continuing without anomaly detection")
         
         # Load GeoIP database
         print(f"\n[*] Loading GeoIP database...")
         try:
             if not os.path.exists(geoip_db_path):
-                print(f"    ✗ GeoIP database not found: {geoip_db_path}")
-                print(f"    ⚠ Running without geolocation (all locations will show 'Unknown')")
+                print(f"    [-] GeoIP database not found: {geoip_db_path}")
+                print(f"    [!] Running without geolocation (all locations will show 'Unknown')")
                 self.geoip_loaded = False
                 self.geo_reader = None
             else:
                 self.geo_reader = geoip2.database.Reader(geoip_db_path)
-                print(f"    ✓ GeoIP database loaded: {geoip_db_path}")
+                print(f"    [+] GeoIP database loaded: {geoip_db_path}")
                 self.geoip_loaded = True
         except Exception as e:
-            print(f"    ✗ Error loading GeoIP database: {e}")
+            print(f"    [-] Error loading GeoIP database: {e}")
             self.geoip_loaded = False
             self.geo_reader = None
         
@@ -133,8 +144,9 @@ class RealtimeIDS:
         # Enhanced CSV with geolocation
         pd.DataFrame(columns=ENHANCED_CSV_COLUMNS).to_csv(self.csv_output, index=False)
         
-        # ML Features CSV - EXACT ORDER
-        pd.DataFrame(columns=FEATURE_COLUMNS_ORDERED).to_csv(self.features_output, index=False)
+        # ML Features CSV - 81 features + Label
+        ml_cols = FEATURE_COLUMNS_ORDERED + ['Label']
+        pd.DataFrame(columns=ml_cols).to_csv(self.features_output, index=False)
         
         log_message(self.backend_url, f"[+] Output files initialized")
         log_message(self.backend_url, f"    - {self.json_output}")
@@ -279,44 +291,46 @@ class RealtimeIDS:
                     elif flag == 'CWR': flow['cwe_count'] += 1
                     elif flag == 'ECE': flow['ece_count'] += 1
 
-    def classify_flow(self, features, flow):
+
+    def detect_anomaly(self, features):
+        """
+        Detect unknown attacks using the anomaly detection model (Autoencoder).
+        """
+        if not self.anomaly_detector_loaded:
+            return None
+            
         try:
             start_time = time.time()
             
-            df = pd.DataFrame([features])
+            # Prepare features for anomaly detector
+            # Ensure features are in the same order as FEATURE_COLUMNS_ORDERED
+            feat_list = [features.get(col, 0) for col in FEATURE_COLUMNS_ORDERED]
+            df = pd.DataFrame([feat_list], columns=FEATURE_COLUMNS_ORDERED)
             
-            for feat in self.selected_features:
-                if feat not in df.columns:
-                    df[feat] = 0
-            
-            df = df[self.selected_features]
+            # Replace inf/-inf and NaN
             df.replace([np.inf, -np.inf], np.nan, inplace=True)
             df.fillna(0, inplace=True)
             
-            prediction_numeric = self.model.predict(df)[0]
-            probabilities = self.model.predict_proba(df)[0]
+            # Scale features
+            scaled_features = self.anomaly_scaler.transform(df)
             
-            attack_type = self.label_encoder.inverse_transform([prediction_numeric])[0]
-            confidence = float(np.max(probabilities))
+            # Predict (Reconstruct)
+            reconstruction = self.anomaly_model.predict(scaled_features, verbose=0)
             
-            prob_dict = {
-                str(self.attack_classes[i]): float(probabilities[i])
-                for i in range(len(self.attack_classes))
-            }
+            mse = np.mean(np.power(scaled_features - reconstruction, 2), axis=1)[0]
             
-            is_malicious = attack_type != 'BENIGN'
-            processing_time = (time.time() - start_time) * 1000  # ms
+            is_anomaly = mse > self.anomaly_threshold
+            processing_time = (time.time() - start_time) * 1000
             
             return {
-                'prediction': str(attack_type),
-                'confidence': confidence,
-                'is_malicious': is_malicious,
-                'probabilities': prob_dict,
+                'is_anomaly': bool(is_anomaly),
+                'score': float(mse),
+                'threshold': float(self.anomaly_threshold),
                 'processing_time_ms': round(processing_time, 2)
             }
             
         except Exception as e:
-            print(f"[!] Classification error: {e}")
+            # print(f"[!] Anomaly detection error: {e}")
             return None
 
     def process_flows(self):
@@ -340,50 +354,63 @@ class RealtimeIDS:
                     features = extract_features(f)
                     
                     if features:
-                        result = self.classify_flow(features, f)
+                        # Use Anomaly Detector only
+                        anomaly_result = self.detect_anomaly(features)
                         
-                        if result:
-                            # Get geolocation
-                            geo_data = get_geolocation(f['src_ip'], self.geo_reader)
+                        # Get geolocation
+                        geo_data = get_geolocation(f['src_ip'], self.geo_reader)
+                        
+                        self.stats['total_flows'] += 1
+                        
+                        # ML features record (ALWAYS - for all flows)
+                        ml_record = {col: features[col] for col in FEATURE_COLUMNS_ORDERED}
+                        ml_record['Label'] = 'Anomaly' if (anomaly_result and anomaly_result['is_anomaly']) else 'BENIGN'
+                        ml_features_records.append(ml_record)
                             
-                            self.stats['total_flows'] += 1
+                        # Create standardized result object for both cases
+                        result = {
+                            'prediction': 'Anomaly' if (anomaly_result and anomaly_result['is_anomaly']) else 'BENIGN',
+                            'is_malicious': bool(anomaly_result and anomaly_result['is_anomaly']),
+                            'confidence': min(1.0, anomaly_result['score'] / (anomaly_result['threshold'] * 2)) if anomaly_result else 1.0,
+                            'probabilities': {'Anomaly': 1.0 if (anomaly_result and anomaly_result['is_anomaly']) else 0.0, 
+                                            'BENIGN': 0.0 if (anomaly_result and anomaly_result['is_anomaly']) else 1.0},
+                            'processing_time_ms': anomaly_result['processing_time_ms'] if anomaly_result else 0
+                        }
+
+                        # Create the flow data object (used as alert payload)
+                        flow_payload = create_enhanced_alert(f, result, features, geo_data)
+                        
+                        if anomaly_result and anomaly_result['is_anomaly']:
+                            # HYBRID: Send ANOMALIES immediately
+                            backend_sent = False
+                            if self.enable_backend:
+                                backend_sent = send_to_backend(self.backend_url, flow_payload)
+                                if backend_sent:
+                                    self.stats['backend_posts'] += 1
+                                else:
+                                    self.stats['backend_failures'] += 1
                             
-                            # ML features record (ALWAYS - for all flows)
-                            ml_record = {col: features[col] for col in FEATURE_COLUMNS_ORDERED}
-                            ml_features_records.append(ml_record)
+                            self.stats['malicious_flows'] += 1
+                            self.stats['attack_types']['Anomaly'] = \
+                                self.stats['attack_types'].get('Anomaly', 0) + 1
                             
-                            if result['is_malicious']:
-                                self.stats['malicious_flows'] += 1
-                                attack_type = result['prediction']
-                                self.stats['attack_types'][attack_type] = \
-                                    self.stats['attack_types'].get(attack_type, 0) + 1
-                                
-                                if result['confidence'] >= self.confidence_threshold:
-                                    # Create streamlined alert
-                                    alert = create_enhanced_alert(f, result, features, geo_data)
-                                    
-                                    # Save to JSON (ALWAYS)
-                                    malicious_alerts.append(alert)
-                                    
-                                    # Create CSV record (ONLY for malicious)
-                                    csv_record = create_csv_record(f, result, features, geo_data)
-                                    all_results.append(csv_record)
-                                    
-                                    # Send to backend (if enabled)
-                                    backend_sent = False
-                                    if self.enable_backend:
-                                        backend_sent = send_to_backend(self.backend_url, alert)
-                                        if backend_sent:
-                                            self.stats['backend_posts'] += 1
-                                        else:
-                                            self.stats['backend_failures'] += 1
-                                    
-                                    # Print alert and send to backend logs
-                                    print_alert(alert, backend_sent, self.backend_url)
-                            else:
-                                self.stats['benign_flows'] += 1
+                            malicious_alerts.append(flow_payload)
                             
-                            to_remove.append(fid)
+                            # Create CSV record for malicious list
+                            csv_record = create_csv_record(f, result, features, geo_data)
+                            all_results.append(csv_record)
+                            
+                            # Print alert for terminal visibility
+                            print_alert(flow_payload, backend_sent, self.backend_url)
+                        else:
+                            # HYBRID: Add BENIGN to batch buffer
+                            self.stats['benign_flows'] += 1
+                            with self.buffer_lock:
+                                self.benign_buffer.append(flow_payload)
+                                if len(self.benign_buffer) >= self.batch_size:
+                                    self._flush_benign_buffer()
+                        
+                        to_remove.append(fid)
             
             # Save to files
             if malicious_alerts:
@@ -392,7 +419,8 @@ class RealtimeIDS:
             
             if ml_features_records:
                 df_ml = pd.DataFrame(ml_features_records)
-                df_ml = df_ml[FEATURE_COLUMNS_ORDERED]
+                ml_cols = FEATURE_COLUMNS_ORDERED + ['Label']
+                df_ml = df_ml[ml_cols]
                 df_ml.to_csv(self.features_output, mode='a', header=False, index=False)
                 # print(f"[+] Saved {len(ml_features_records)} ML feature records")
             
@@ -403,6 +431,19 @@ class RealtimeIDS:
             
             for fid in to_remove:
                 del self.flows[fid]
+
+    def _flush_benign_buffer(self):
+        """Send all buffered benign flows to the backend in one request"""
+        if not self.benign_buffer or not self.enable_backend:
+            self.benign_buffer = []
+            return
+            
+        success = send_batch_to_backend(self.backend_url, self.benign_buffer)
+        if success:
+            # print(f"📦 Successfully sent batch of {len(self.benign_buffer)} benign flows")
+            pass
+        
+        self.benign_buffer = []
 
     def print_stats(self):
         """Print statistics and send to backend logs"""
@@ -449,6 +490,7 @@ class RealtimeIDS:
             print("="*70)
             print("[*] Processing remaining flows...")
             self.process_flows()
+            self._flush_benign_buffer()
             
             if self.geoip_loaded and self.geo_reader:
                 try:

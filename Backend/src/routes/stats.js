@@ -115,15 +115,18 @@ router.get('/', async (req, res) => {
 
     // 9. Timeline data (attacks over time)
     const timelineData = await Flow.aggregate([
-      { $match: { ...dateFilter, is_malicious: true } },
+      { $match: dateFilter },
       { $group: {
           _id: { 
             $dateToString: { 
-              format: "%Y-%m-%d %H:00", 
+              format: "%Y-%m-%dT%H:00:00.000Z", 
               date: "$timestamp" 
             }
           },
-          count: { $sum: 1 }
+          totalFlows: { $sum: 1 },
+          maliciousFlows: { 
+            $sum: { $cond: [{ $eq: ["$is_malicious", true] }, 1, 0] } 
+          }
         }
       },
       { $sort: { _id: 1 } }

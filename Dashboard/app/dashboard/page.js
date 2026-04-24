@@ -76,6 +76,10 @@ const GuardianIDSDashboard = () => {
     try {
       const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
       const token = localStorage.getItem('token');
+      
+      if (!token) {
+        return; // Don't fetch if no token
+      }
 
       const response = await fetch(`${BACKEND_URL}/api/stats?time_range=${timeRange}`, {
         headers: {
@@ -85,6 +89,11 @@ const GuardianIDSDashboard = () => {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          console.warn('Session expired or invalid. Logging out...');
+          handleLogout();
+          return;
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
@@ -164,72 +173,82 @@ const GuardianIDSDashboard = () => {
     </div>
   );
 
-  const TimelineChart = ({ data, timeRange = '24h' }) => {
-    if (!data) return <div className="h-48 flex items-center justify-center text-neutral-600">No timeline data</div>;
+  const TimelineChart = ({ data }) => {
+    if (!data) return <div className="h-64 flex items-center justify-center text-neutral-600">No timeline data available</div>;
 
     const processData = () => {
-      const now = new Date();
-      let buckets = [];
-      let count = 24;
-      let stepInMs = 3600000;
-
-      if (timeRange === '1h') { count = 12; stepInMs = 300000; }
-      if (timeRange === '6h') { count = 24; stepInMs = 900000; }
-      if (timeRange === '7d') { count = 14; stepInMs = 43200000; }
-      if (timeRange === '30d') { count = 30; stepInMs = 86400000; }
-
-      for (let i = count - 1; i >= 0; i--) {
-        const time = new Date(now - (i * stepInMs));
-        let label = '';
-        if (timeRange === '24h' || timeRange === '6h' || timeRange === '1h') {
-          label = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-        } else {
-          label = time.toLocaleDateString([], { month: 'short', day: 'numeric' });
-        }
-
-        const backendMatch = data.find(item => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Start of today
+      
+      const buckets = [];
+      for (let i = 0; i < 24; i++) {
+        const time = new Date(today.getTime() + (i * 3600000));
+        const label = time.getHours().toString().padStart(2, '0');
+        
+        // Find if we have data for this hour in the backend response
+        const hourData = data.find(item => {
           const itemDate = new Date(item._id);
-          return Math.abs(itemDate - time) < stepInMs;
+          return itemDate.getHours() === time.getHours() && 
+                 itemDate.getDate() === today.getDate() &&
+                 itemDate.getMonth() === today.getMonth() &&
+                 itemDate.getFullYear() === today.getFullYear();
         });
+
+        const total = hourData ? hourData.totalFlows : 0;
+        const malicious = hourData ? hourData.maliciousFlows : 0;
+        const percentage = total > 0 ? (malicious / total) * 100 : 0;
 
         buckets.push({
           label,
-          count: backendMatch ? backendMatch.count : 0
+          total,
+          malicious,
+          percentage
         });
       }
       return buckets;
     };
 
     const buckets = processData();
-    const maxVal = Math.max(...buckets.map(b => b.count), 5);
 
     return (
-      <div className="space-y-4">
-        <div className="flex items-end justify-between h-48 gap-1 px-1">
+      <div className="space-y-2">
+        <div className="flex items-end justify-between h-64 gap-[2px] px-1 relative">
           {buckets.map((b, i) => {
-            const height = (b.count / maxVal) * 100;
             return (
-              <div key={i} className="flex-1 flex flex-col items-center group relative h-full justify-end">
-                <div
-                  className="w-full bg-white/20 group-hover:bg-white transition-all duration-300 rounded-t-sm"
-                  style={{ height: `${height}%`, minHeight: b.count > 0 ? '4px' : '0px' }}
-                />
-                {/* Tooltip */}
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-black text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 font-bold">
-                  {b.label}: {b.count}
+              <div key={i} className="flex-1 flex flex-col items-center h-full justify-end group relative">
+                {/* Background Bar (Total Capacity) */}
+                <div className="absolute inset-x-0 bottom-0 top-0 bg-neutral-800/25 rounded-t-[1px] transition-colors group-hover:bg-neutral-800/40" />
+                
+                {/* Malicious Fill (Percentage) */}
+                <div 
+                  className={`w-full transition-all duration-700 ease-out rounded-t-[1px] relative z-10 ${
+                    b.malicious > 0 
+                      ? 'bg-white shadow-[0_0_15px_rgba(255,255,255,0.2)]' 
+                      : 'bg-transparent'
+                  }`}
+                  style={{ height: `${b.percentage}%` }}
+                >
+                  {b.malicious > 0 && (
+                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[8px] font-bold text-white/90">
+                      {Math.round(b.percentage)}%
+                    </div>
+                  )}
+                </div>
+                
+                {/* Tooltip Flyout */}
+                <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-white text-black text-[9px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-30 font-black uppercase tracking-tighter shadow-2xl">
+                  {b.percentage.toFixed(1)}% Malicious ({b.malicious}/{b.total})
+                </div>
+
+                {/* Direct Hourly Label */}
+                <div className="mt-4 pt-2 border-t border-neutral-800 w-full text-center">
+                  <span className="text-[9px] font-bold text-neutral-600 uppercase">
+                    {b.label}
+                  </span>
                 </div>
               </div>
             );
           })}
-        </div>
-
-        {/* Labels Row */}
-        <div className="flex justify-between px-1">
-          {buckets.filter((_, i) => i % (buckets.length > 20 ? 4 : 2) === 0).map((b, i) => (
-            <span key={i} className="text-[10px] text-neutral-500 font-mono">
-              {b.label}
-            </span>
-          ))}
         </div>
       </div>
     );
@@ -376,9 +395,8 @@ const GuardianIDSDashboard = () => {
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Timeline Chart */}
-        <div className="lg:col-span-2 bg-neutral-900 border border-neutral-800 rounded-lg p-6">
+      <div className="grid grid-cols-1 gap-6">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-6 shadow-xl">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-light">Attack Timeline</h3>
             <button className="text-neutral-400 hover:text-white">
@@ -387,55 +405,9 @@ const GuardianIDSDashboard = () => {
           </div>
           <TimelineChart data={timeline} timeRange={timeRange} />
         </div>
-
-        {/* Attack Type Breakdown */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
-          <h3 className="text-lg font-light mb-6">Attack Types</h3>
-          <AttackTypeChart data={attack_type_breakdown} />
-        </div>
       </div>
 
-      {/* Live Activity Feed */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
-        <div className="flex items-center gap-2 mb-6">
-          <Eye size={20} />
-          <h3 className="text-lg font-light">Live Attack Stream</h3>
-          <div className="ml-auto flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-xs text-neutral-400">Real-time</span>
-          </div>
-        </div>
-        {recent_attacks && recent_attacks.length > 0 ? (
-          <div className="space-y-3">
-            {recent_attacks.map((attack) => (
-              <div key={attack.flow_id} className="flex items-center justify-between p-4 bg-neutral-800/30 rounded border-l-4 border-white hover:bg-neutral-800/50 transition-colors">
-                <div className="flex-1 grid grid-cols-4 gap-4 items-center">
-                  <div>
-                    <p className="text-sm text-white font-medium">{attack.attack_type}</p>
-                    <p className="text-xs text-neutral-500 font-mono">{attack.src_ip}</p>
-                  </div>
-                  <div className="text-xs text-neutral-400">
-                    {new Date(attack.timestamp).toLocaleString()}
-                  </div>
-                  <div className={`text-sm font-medium ${getSeverityColor(attack.severity_score)}`}>
-                    Severity: {attack.severity_score?.toFixed(1) || 'N/A'}
-                  </div>
-                  <div className="flex gap-2 justify-end">
-                    <button className="px-3 py-1 bg-neutral-700 text-white text-xs rounded hover:bg-neutral-600 transition-colors">
-                      Investigate
-                    </button>
-                    <button className="px-3 py-1 bg-white text-black text-xs rounded hover:bg-neutral-200 transition-colors">
-                      Block
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-neutral-600">No recent attacks</div>
-        )}
-      </div>
+      {/* Live Activity Feed Removed */}
     </div>
   );
 };

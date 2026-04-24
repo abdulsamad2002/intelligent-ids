@@ -1,14 +1,26 @@
 """
 Geolocation lookup functions.
 """
+import ipaddress
 from geoip2.errors import AddressNotFoundError
 
 def get_geolocation(ip, reader=None):
     """Lookup IP geolocation using GeoIP2"""
-    if not reader:
-        return default_geo_data()
-    
     try:
+        # Check if it is a private/local IP
+        ip_obj = ipaddress.ip_address(ip)
+        if ip_obj.is_private or ip_obj.is_loopback:
+            return {
+                'country_code': 'LCL',
+                'country_name': 'Local Network',
+                'city': 'Internal',
+                'latitude': 0.0,
+                'longitude': 0.0
+            }
+            
+        if not reader:
+            return default_geo_data()
+            
         response = reader.city(ip)
         return {
             'country_code': response.country.iso_code or 'Unknown',
@@ -19,7 +31,7 @@ def get_geolocation(ip, reader=None):
         }
     except AddressNotFoundError:
         return default_geo_data()
-    except Exception as e:
+    except Exception:
         return default_geo_data()
 
 def default_geo_data():

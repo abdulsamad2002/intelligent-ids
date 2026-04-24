@@ -13,6 +13,7 @@ const { auth, idsAuth } = require('../middleware/auth');
 router.post('/', idsAuth, validateFlow, async (req, res) => {
   try {
     const flowData = req.body;
+    console.log(`DEBUG: Incoming flow - is_malicious: ${flowData.is_malicious} (Type: ${typeof flowData.is_malicious})`);
     
     const flow = new Flow(flowData);
     await flow.save();
@@ -26,17 +27,33 @@ router.post('/', idsAuth, validateFlow, async (req, res) => {
     );
     
     // Process malicious flows
-    if (flow.is_malicious) {
+    if (flowData.is_malicious) {
       // 0. Save persistent alert
-      const alert = new Alert({
-        flow_id: flow.flow_id,
-        attack_type: flow.attack_type,
-        severity_score: flow.severity_score,
-        src_ip: flow.src_ip,
-        dst_ip: flow.dst_ip,
-        status: 'new'
-      });
-      await alert.save();
+      try {
+        const alert = new Alert({
+          flow_id: flowData.flow_id,
+          attack_type: flowData.attack_type,
+          severity_score: flowData.severity_score || 0,
+          confidence: flowData.confidence || 1.0,
+          src_ip: flowData.src_ip,
+          src_port: flowData.src_port,
+          dst_ip: flowData.dst_ip,
+          dst_port: flowData.dst_port,
+          protocol: flowData.protocol,
+          src_country: flowData.src_country,
+          src_country_name: flowData.src_country_name,
+          src_city: flowData.src_city,
+          duration: flowData.duration,
+          total_bytes: flowData.total_bytes,
+          flow_packets_per_sec: flowData.flow_packets_per_sec,
+          timestamp: flowData.timestamp || new Date(),
+          status: 'new'
+        });
+        await alert.save();
+        console.log(`✅ Alert created in DB: ${flowData.flow_id}`);
+      } catch (alertError) {
+        console.error('❌ Failed to save Alert to DB:', alertError.message);
+      }
 
       // 1. Broadcast to WebSocket
       broadcastNewAttack(flowData);
@@ -79,6 +96,38 @@ router.post('/', idsAuth, validateFlow, async (req, res) => {
       error: 'Failed to save flow',
       message: error.message 
     });
+  }
+});
+
+// POST /api/flows/batch - Bulk receive flows from IDS
+router.post('/batch', idsAuth, async (req, res) => {
+  try {
+    const flowsData = req.body;
+    if (!Array.isArray(flowsData)) {
+      return res.status(400).json({ success: false, error: 'Expected an array of flows' });
+    }
+
+    if (flowsData.length === 0) {
+      return res.status(200).json({ success: true, message: 'Empty batch received' });
+    }
+
+    // Bulk insert into MongoDB (ignores duplicates to prevent crash)
+    const result = await Flow.insertMany(flowsData, { ordered: false }).catch(err => {
+        // Handle partial success (some duplicates ignored)
+        return err.insertedDocs;
+    });
+
+    console.log(`📦 Batch saved: ${flowsData.length} benign flows`);
+
+    res.status(201).json({
+      success: true,
+      count: flowsData.length,
+      message: 'Batch received and saved'
+    });
+
+  } catch (error) {
+    console.error('❌ Error saving flow batch:', error.message);
+    res.status(500).json({ success: false, error: 'Failed to save flow batch' });
   }
 });
 

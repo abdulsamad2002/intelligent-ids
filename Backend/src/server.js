@@ -72,27 +72,14 @@ async function start() {
     schedulerService.init();
     
     server.listen(PORT, () => {
-      console.log(`\n${'='.repeat(60)}`);
-      console.log(`  IDS BACKEND SERVER`);
-      console.log(`${'='.repeat(60)}`);
-      console.log(`✓ Server running on port ${PORT}`);
-      console.log(`✓ Environment: ${config.nodeEnv}`);
-      console.log(`✓ WebSocket: Enabled`);
-      console.log(`✓ Auto-Block: ${config.autoBlock.enabled ? 'Enabled' : 'Disabled'}`);
-      console.log(`\n  Available Endpoints:`);
-      console.log(`  → GET    /health`);
-      console.log(`  → POST   /api/flows`);
-      console.log(`  → GET    /api/flows`);
-      console.log(`  → GET    /api/stats`);
-      console.log(`  → GET    /api/blocked`);
-      console.log(`  → POST   /api/blocked`);
-      console.log(`  → DELETE /api/blocked/:ip`);
-      console.log(`  → GET    /api/threat-intel/check/:ip`);
-      console.log(`  → GET    /api/threat-intel/stats`);
-      console.log(`  → POST   /api/reports/generate`);
-      console.log(`  → GET    /api/reports/latest`);
-      console.log(`  → GET    /api/alerts`);
-      console.log(`${'='.repeat(60)}\n`);
+      console.log(`\n${'='.repeat(50)}`);
+      console.log(` 🛡️  IDS BACKEND READY`);
+      console.log(`${'='.repeat(50)}`);
+      console.log(` Port:    ${PORT}`);
+      console.log(` Status:  Healthy (Connected)`);
+      console.log(` Mode:    ${config.nodeEnv.toUpperCase()}`);
+      console.log(` Block:   ${config.autoBlock.enabled ? 'Enabled' : 'Disabled'}`);
+      console.log(`${'='.repeat(50)}\n`);
     });
   } catch (error) {
     console.error('✗ Failed to start server:', error);

@@ -20,9 +20,12 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.1.4",
     "node-cron": "^4.2.1",
-    "nodemailer": "^7.0.12",
+    "nodemailer": "^8.0.5",
     "socket.io": "^4.8.3",
     "winston": "^3.19.0",
     "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }
