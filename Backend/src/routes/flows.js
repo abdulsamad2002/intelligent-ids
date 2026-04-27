@@ -58,11 +58,12 @@ router.post('/', idsAuth, validateFlow, async (req, res) => {
       // 1. Broadcast to WebSocket
       broadcastNewAttack(flowData);
       
-      // 2. Check auto-block
+      /* 2. Check auto-block (Feature Disabled as per request)
       const shouldBlock = await autoBlockService.shouldBlock(flow);
       if (shouldBlock) {
         await autoBlockService.blockIP(flow);
       }
+      */
       
       // 3. Send email alert for critical attacks (async, don't wait)
       emailService.sendCriticalAlert(flow).catch(err => {
@@ -146,11 +147,19 @@ router.get('/', auth, async (req, res) => {
       max_severity,
       start_date,
       end_date,
+      enriched,
+      unique,
       sort_by = 'timestamp',
       sort_order = 'desc'
     } = req.query;
 
     const query = {};
+
+    if (enriched === 'true') {
+      query.threat_intel = { $exists: true, $ne: null };
+      // Exclude local/private IPs from global intel feed
+      query.src_ip = { $not: /^192\.168\.|^10\.|^127\.0\.0\.1|^172\.(1[6-9]|2[0-9]|3[0-1])\./ };
+    }
 
     if (malicious !== undefined) {
       query.is_malicious = malicious === 'true';
@@ -182,6 +191,42 @@ router.get('/', auth, async (req, res) => {
       query.timestamp = {};
       if (start_date) query.timestamp.$gte = new Date(start_date);
       if (end_date) query.timestamp.$lte = new Date(end_date);
+    }
+
+    // Handle Unique/Distinct Grouping (Move to end)
+    if (unique === 'true') {
+      const pipeline = [
+        { $match: query },
+        { $sort: { timestamp: -1 } },
+        { $group: {
+            _id: '$src_ip',
+            latest_flow: { $first: '$$ROOT' }
+        }},
+        { $replaceRoot: { newRoot: '$latest_flow' } },
+        { $sort: { [sort_by]: sort_order === 'asc' ? 1 : -1 } },
+        { $skip: parseInt(skip) },
+        { $limit: parseInt(limit) }
+      ];
+
+      const flows = await Flow.aggregate(pipeline);
+      const totalResult = await Flow.aggregate([
+        { $match: query },
+        { $group: { _id: '$src_ip' } },
+        { $count: 'count' }
+      ]);
+      const total = totalResult.length > 0 ? totalResult[0].count : 0;
+
+      return res.json({
+        success: true,
+        data: flows,
+        pagination: {
+          total,
+          count: flows.length,
+          limit: parseInt(limit),
+          skip: parseInt(skip),
+          pages: Math.ceil(total / parseInt(limit))
+        }
+      });
     }
 
     const sortObj = {};

@@ -29,8 +29,8 @@ const DashboardLayout = ({ children }) => {
   }
 
   if (loading) {
-    return <div className="min-h-screen bg-black flex items-center justify-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-white"></div>
+    return <div className="min-h-screen bg-bg flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-fg"></div>
     </div>;
   }
 
@@ -39,9 +39,9 @@ const DashboardLayout = ({ children }) => {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-black">
+    <div className="flex h-screen overflow-hidden bg-bg">
       <Sidebar />
-      <main className="flex-1 overflow-auto text-white p-8">
+      <main className="flex-1 overflow-auto p-8">
         {children}
       </main>
     </div>

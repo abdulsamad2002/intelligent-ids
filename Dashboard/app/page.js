@@ -21,11 +21,11 @@ export default function Home() {
   }, [router]);
 
   return (
-    <div className="flex items-center justify-center h-screen bg-black">
+    <div className="flex items-center justify-center h-screen bg-bg">
       <div className="text-center">
-        <Shield size={48} className="text-white mx-auto mb-4 animate-pulse" />
-        <Loader2 size={24} className="text-neutral-400 mx-auto animate-spin" />
-        <p className="text-neutral-400 mt-4">Loading Guardian IDS...</p>
+        <Shield size={48} className="text-fg mx-auto mb-4 animate-pulse" />
+        <Loader2 size={24} className="text-neutral-500 mx-auto animate-spin" />
+        <p className="text-neutral-500 mt-4 font-light tracking-widest uppercase text-[10px]">Initializing Intelligent IDS...</p>
       </div>
     </div>
   );

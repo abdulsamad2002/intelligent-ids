@@ -10,7 +10,8 @@ const reportSchema = new mongoose.Schema({
     total_flows: Number,
     malicious_count: Number,
     blocked_count: Number,
-    top_attack_type: String
+    top_attack_type: String,
+    timeline: [mongoose.Schema.Types.Mixed] // Snapshot of hourly malicious counts
   },
   ai_analysis: {
     executive_summary: String,

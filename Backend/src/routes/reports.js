@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const aiReportService = require('../services/aiReports');
 const { auth } = require('../middleware/auth');
+const Report = require('../models/Report');
 
 // Protect all report routes
 router.use(auth);
@@ -51,6 +52,46 @@ router.post('/generate', async (req, res) => {
         error: 'GROQ_API_KEY is missing or invalid. Please add it to your .env file.' 
       });
     }
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/reports/:id/pdf - Download report as PDF
+router.get('/:id/pdf', async (req, res) => {
+  try {
+    const pdfBuffer = await aiReportService.generatePDF(req.params.id);
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=Security_Report_${req.params.id}.pdf`);
+    res.send(pdfBuffer);
+    
+  } catch (error) {
+    console.error('❌ PDF Generation Error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+const fs = require('fs');
+const path = require('path');
+
+// DELETE /api/reports/:id - Delete a report
+router.delete('/:id', async (req, res) => {
+  try {
+    const reportId = req.params.id;
+    const report = await Report.findByIdAndDelete(reportId);
+    if (!report) {
+      return res.status(404).json({ success: false, error: 'Report not found' });
+    }
+
+    // Delete from filesystem
+    const filePath = path.join(__dirname, '../../exports/reports', `${reportId}.pdf`);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      console.log(`🗑️ Deleted report file: ${filePath}`);
+    }
+
+    res.json({ success: true, message: 'Report deleted successfully' });
+  } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });

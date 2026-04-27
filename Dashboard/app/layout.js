@@ -12,19 +12,22 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Guardian IDS Dashboard",
+  title: "Intelligent IDS Dashboard",
   description: "Advanced Intrusion Detection System",
 };
 
+import { ThemeProvider } from "@/components/ThemeContext";
 import DashboardLayout from "@/components/DashboardLayout";
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black`}>
-        <DashboardLayout>
-          {children}
-        </DashboardLayout>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <ThemeProvider>
+          <DashboardLayout>
+            {children}
+          </DashboardLayout>
+        </ThemeProvider>
       </body>
     </html>
   );

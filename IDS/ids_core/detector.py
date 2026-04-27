@@ -9,6 +9,7 @@ import sys
 from datetime import datetime
 import threading
 import os
+import ipaddress
 import warnings
 import pandas as pd
 import numpy as np
@@ -87,6 +88,7 @@ class RealtimeIDS:
                     
                     # Load Threshold
                     with open(anomaly_threshold_path, 'rb') as f:
+                        print(f"    [DEBUG] Opening threshold file: {os.path.abspath(anomaly_threshold_path)}")
                         self.anomaly_threshold = pickle.load(f)
                     print(f"    [+] Anomaly threshold loaded: {self.anomaly_threshold}")
                     
@@ -179,7 +181,7 @@ class RealtimeIDS:
                 if TCP in packet:
                     tcp = packet[TCP]
                     src_port, dst_port = tcp.sport, tcp.dport
-                    hdr_len += tcp.dataofs * 4
+                    # Removed adding TCP header length to match capture_dataset.py
                     flags = {
                         'FIN': int(tcp.flags.F), 'SYN': int(tcp.flags.S),
                         'RST': int(tcp.flags.R), 'PSH': int(tcp.flags.P),
@@ -191,7 +193,7 @@ class RealtimeIDS:
                 elif UDP in packet:
                     udp = packet[UDP]
                     src_port, dst_port = udp.sport, udp.dport
-                    hdr_len += 8
+                    # Removed adding UDP header length to match capture_dataset.py
                     self.stats['udp_packets'] += 1
                     
                 elif ICMP in packet:
@@ -231,9 +233,30 @@ class RealtimeIDS:
               f"{backend_status}")
 
     def _init_flow(self, key, ip, src_port, dst_port, ts):
+        src_ip = ip.src
+        dst_ip = ip.dst
+        s_port = src_port
+        d_port = dst_port
+
+        # Swapping logic: If the source is a local/private IP, we check if it's an outgoing packet.
+        # We want the "External" or "Other" IP to be the 'Source' (Attacker) on the map.
+        try:
+            src_is_private = ipaddress.ip_address(src_ip).is_private
+            dst_is_private = ipaddress.ip_address(dst_ip).is_private
+            
+            # If Source is private and Destination is public, DEFINITELY swap.
+            # If BOTH are private, we still swap if the source is the one we usually consider "us".
+            if src_is_private and (not dst_is_private or src_ip.startswith('192.168.')):
+                # Only swap if the destination isn't also the same IP (loopback etc)
+                if src_ip != dst_ip:
+                    src_ip, dst_ip = dst_ip, src_ip
+                    s_port, d_port = d_port, s_port
+        except Exception:
+            pass
+
         return {
-            'flow_id': key, 'src_ip': ip.src, 'dst_ip': ip.dst,
-            'src_port': src_port, 'dst_port': dst_port, 'protocol': ip.proto,
+            'flow_id': key, 'src_ip': src_ip, 'dst_ip': dst_ip,
+            'src_port': s_port, 'dst_port': d_port, 'protocol': ip.proto,
             'start_time': ts, 'last_time': ts, 'fwd_packets': 0, 'bwd_packets': 0,
             'fwd_bytes': 0, 'bwd_bytes': 0, 'fwd_header_bytes': 0, 'bwd_header_bytes': 0,
             'fwd_packet_lengths': [], 'bwd_packet_lengths': [], 'all_packet_lengths': [],
@@ -262,6 +285,12 @@ class RealtimeIDS:
             flow['fwd_bytes'] += pkt_len
             flow['fwd_header_bytes'] += hdr_len
             flow['fwd_packet_lengths'].append(pkt_len)
+            
+            # CAPTURE INITIAL WINDOW BYTES
+            if TCP in ip: # In scapy, TCP is inside the IP layer usually
+                flow['init_win_bytes_fwd'] = ip[TCP].window
+            elif hasattr(ip, 'window'): # Fallback for different packet structures
+                flow['init_win_bytes_fwd'] = ip.window
         else:
             if flow['last_bwd_packet_time']:
                 flow['bwd_iat'].append(ts - flow['last_bwd_packet_time'])
@@ -270,6 +299,12 @@ class RealtimeIDS:
             flow['bwd_bytes'] += pkt_len
             flow['bwd_header_bytes'] += hdr_len
             flow['bwd_packet_lengths'].append(pkt_len)
+
+            # CAPTURE INITIAL WINDOW BYTES
+            if TCP in ip:
+                flow['init_win_bytes_bwd'] = ip[TCP].window
+            elif hasattr(ip, 'window'):
+                flow['init_win_bytes_bwd'] = ip.window
         
         flow['all_packet_lengths'].append(pkt_len)
         flow['last_packet_time'] = ts

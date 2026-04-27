@@ -63,20 +63,20 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+    <div className="min-h-screen bg-bg flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo/Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-full mb-4">
-            <Shield size={32} className="text-black" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-fg rounded-full mb-4">
+            <Shield size={32} className="text-bg" />
           </div>
-          <h1 className="text-3xl font-light text-white mb-2">Guardian IDS</h1>
-          <p className="text-neutral-400 text-sm">Intrusion Detection System</p>
+          <h1 className="text-3xl font-light text-fg mb-2">Intelligent IDS</h1>
+          <p className="text-neutral-500 text-sm">Intrusion Detection System</p>
         </div>
 
         {/* Login Form */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-8">
-          <h2 className="text-xl font-light text-white mb-6">Sign In</h2>
+        <div className="bg-card border border-border rounded-lg p-8 shadow-sm">
+          <h2 className="text-xl font-light text-fg mb-6">Sign In</h2>
           
           {error && (
             <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded flex items-start gap-3">
@@ -87,7 +87,7 @@ const LoginPage = () => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="username" className="block text-sm text-neutral-400 mb-2">
+              <label htmlFor="username" className="block text-sm text-neutral-500 mb-2">
                 Username
               </label>
               <input
@@ -97,14 +97,14 @@ const LoginPage = () => {
                 value={formData.username}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded text-white placeholder-neutral-500 focus:outline-none focus:border-white transition-colors"
+                className="w-full px-4 py-3 bg-bg border border-border rounded text-fg placeholder-neutral-500 focus:outline-none focus:border-accent transition-colors"
                 placeholder="Enter your username"
                 disabled={loading}
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm text-neutral-400 mb-2">
+              <label htmlFor="password" className="block text-sm text-neutral-500 mb-2">
                 Password
               </label>
               <input
@@ -114,7 +114,7 @@ const LoginPage = () => {
                 value={formData.password}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded text-white placeholder-neutral-500 focus:outline-none focus:border-white transition-colors"
+                className="w-full px-4 py-3 bg-bg border border-border rounded text-fg placeholder-neutral-500 focus:outline-none focus:border-accent transition-colors"
                 placeholder="Enter your password"
                 disabled={loading}
               />
@@ -123,7 +123,7 @@ const LoginPage = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-white text-black rounded font-medium hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3 bg-fg text-bg rounded font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -136,9 +136,9 @@ const LoginPage = () => {
             </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-neutral-800">
+          <div className="mt-6 pt-6 border-t border-border">
             <p className="text-xs text-neutral-500 text-center">
-              Default credentials: <span className="text-neutral-400">admin / admin123</span>
+              Default credentials: <span className="text-fg/60">admin / admin123</span>
             </p>
           </div>
         </div>
@@ -146,7 +146,7 @@ const LoginPage = () => {
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-xs text-neutral-600">
-            Guardian IDS v1.0 - Secure Network Monitoring
+            Intelligent IDS v1.0 - Secure Network Monitoring
           </p>
         </div>
       </div>

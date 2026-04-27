@@ -52,4 +52,48 @@ router.post('/clear-cache', (req, res) => {
   });
 });
 
+// POST /api/threat-intel/sync-alerts - Sync all unique IPs from alerts with IPDB
+router.post('/sync-alerts', async (req, res) => {
+  try {
+    const Alert = require('../models/Alert');
+    const Flow = require('../models/Flow');
+    
+    // 1. Get unique external IPs from HIGH SEVERITY Alerts (>8)
+    const uniqueIPs = await Alert.distinct('src_ip', {
+      src_ip: { $not: /^192\.168\.|^10\.|^127\.0\.0\.1|^172\.(1[6-9]|2[0-9]|3[0-1])\./ },
+      severity_score: { $gt: 8 }
+    });
+
+    console.log(`🔄 Syncing ${uniqueIPs.length} unique IPs from alerts...`);
+
+    const results = [];
+    for (const ip of uniqueIPs) {
+      // 2. Fetch from AbuseIPDB (service handles caching)
+      const intel = await threatIntelService.checkIP(ip);
+      
+      if (intel) {
+        // 3. Update the LATEST flow for this IP so it shows up in Intel Table
+        await Flow.findOneAndUpdate(
+          { src_ip: ip },
+          { $set: { threat_intel: intel } },
+          { sort: { timestamp: -1 } }
+        );
+        results.push({ ip, score: intel.abuse_score });
+      }
+    }
+
+    res.json({
+      success: true,
+      count: results.length,
+      ips_synced: results
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

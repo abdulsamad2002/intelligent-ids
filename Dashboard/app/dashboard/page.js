@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation';
 import { Shield, Activity, AlertTriangle, Ban, FileText, Search, ChevronLeft, ChevronRight, User, TrendingUp, TrendingDown, Globe, Clock, Zap, Eye, Download, LogOut } from 'lucide-react';
 import { io } from 'socket.io-client';
 
-const GuardianIDSDashboard = () => {
+const IntelligentIDSDashboard = () => {
   const router = useRouter();
 
-  const [timeRange, setTimeRange] = useState('24h');
   const [dashboardData, setDashboardData] = useState(null);
   const [wsConnected, setWsConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
+  const timeRange = '24h'; // Fixed to today's view
 
   // Check authentication on mount
   useEffect(() => {
@@ -144,32 +144,11 @@ const GuardianIDSDashboard = () => {
     return flags[code] || '🌍';
   };
 
-  const StatCard = ({ label, value, subtitle, trend, icon: Icon, badge }) => (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-6 hover:border-neutral-700 transition-colors">
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1">
-          <p className="text-neutral-400 text-sm">{label}</p>
-          {badge && (
-            <span className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded ${getThreatBadgeColor(badge)}`}>
-              {badge}
-            </span>
-          )}
-        </div>
-        {Icon && <Icon size={20} className="text-neutral-600" />}
-      </div>
-      <p className="text-4xl font-light text-white mb-2">{value || '0'}</p>
-      {subtitle && (
-        <div className="flex items-center gap-2">
-          {trend && (
-            trend === 'up' ?
-              <TrendingUp size={14} className="text-red-500" /> :
-              <TrendingDown size={14} className="text-green-500" />
-          )}
-          <p className={`text-xs ${trend === 'up' ? 'text-red-400' : trend === 'down' ? 'text-green-400' : 'text-neutral-400'}`}>
-            {subtitle}
-          </p>
-        </div>
-      )}
+  const StatCard = ({ label, value, subtitle }) => (
+    <div className="bg-card border border-border rounded-lg p-4 transition-colors">
+      <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-1">{label}</p>
+      <p className="text-2xl font-light text-fg mb-1">{value || '0'}</p>
+      <p className="text-[9px] text-neutral-500 font-mono uppercase">{subtitle}</p>
     </div>
   );
 
@@ -211,38 +190,38 @@ const GuardianIDSDashboard = () => {
     const buckets = processData();
 
     return (
-      <div className="space-y-2">
-        <div className="flex items-end justify-between h-64 gap-[2px] px-1 relative">
+      <div className="h-full w-full">
+        <div className="flex items-end justify-between h-full gap-[2px] px-1 relative">
           {buckets.map((b, i) => {
             return (
               <div key={i} className="flex-1 flex flex-col items-center h-full justify-end group relative">
                 {/* Background Bar (Total Capacity) */}
-                <div className="absolute inset-x-0 bottom-0 top-0 bg-neutral-800/25 rounded-t-[1px] transition-colors group-hover:bg-neutral-800/40" />
+                <div className="absolute inset-x-0 bottom-0 top-0 bg-sidebar rounded-t-[1px] transition-colors group-hover:bg-neutral-500/10" />
                 
                 {/* Malicious Fill (Percentage) */}
                 <div 
                   className={`w-full transition-all duration-700 ease-out rounded-t-[1px] relative z-10 ${
                     b.malicious > 0 
-                      ? 'bg-white shadow-[0_0_15px_rgba(255,255,255,0.2)]' 
+                      ? 'bg-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.2)]' 
                       : 'bg-transparent'
                   }`}
                   style={{ height: `${b.percentage}%` }}
                 >
                   {b.malicious > 0 && (
-                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[8px] font-bold text-white/90">
+                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[8px] font-bold text-accent">
                       {Math.round(b.percentage)}%
                     </div>
                   )}
                 </div>
                 
                 {/* Tooltip Flyout */}
-                <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-white text-black text-[9px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-30 font-black uppercase tracking-tighter shadow-2xl">
+                <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-card border border-border text-fg text-[9px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-30 font-black uppercase tracking-tighter shadow-xl">
                   {b.percentage.toFixed(1)}% Malicious ({b.malicious}/{b.total})
                 </div>
 
                 {/* Direct Hourly Label */}
-                <div className="mt-4 pt-2 border-t border-neutral-800 w-full text-center">
-                  <span className="text-[9px] font-bold text-neutral-600 uppercase">
+                <div className="mt-4 pt-2 border-t border-border w-full text-center">
+                  <span className="text-[9px] font-bold text-neutral-500 uppercase">
                     {b.label}
                   </span>
                 </div>
@@ -254,52 +233,52 @@ const GuardianIDSDashboard = () => {
     );
   };
 
-  const AttackTypeChart = ({ data }) => {
-    if (!data || data.length === 0) {
-      return <div className="h-48 flex items-center justify-center text-neutral-600">No attack type data</div>;
-    }
-
-    const total = data.reduce((sum, item) => sum + item.count, 0);
-    let currentAngle = 0;
+  const SeverityDistribution = ({ data, total }) => {
+    if (!data) return null;
+    const levels = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+    const colors = {
+      LOW: 'bg-blue-500',
+      MEDIUM: 'bg-yellow-500',
+      HIGH: 'bg-orange-500',
+      CRITICAL: 'bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.2)]'
+    };
 
     return (
       <div className="space-y-4">
-        <div className="relative w-48 h-48 mx-auto">
-          <svg viewBox="0 0 100 100" className="transform -rotate-90">
-            {data.map((item, i) => {
-              const percentage = (item.count / total) * 100;
-              const angle = (percentage / 100) * 360;
-              const startAngle = currentAngle;
-              currentAngle += angle;
-
-              const x1 = 50 + 40 * Math.cos((startAngle * Math.PI) / 180);
-              const y1 = 50 + 40 * Math.sin((startAngle * Math.PI) / 180);
-              const x2 = 50 + 40 * Math.cos((currentAngle * Math.PI) / 180);
-              const y2 = 50 + 40 * Math.sin((currentAngle * Math.PI) / 180);
-
-              const largeArc = angle > 180 ? 1 : 0;
-
-              return (
-                <path
-                  key={i}
-                  d={`M 50 50 L ${x1} ${y1} A 40 40 0 ${largeArc} 1 ${x2} ${y2} Z`}
-                  fill="white"
-                  opacity={0.9 - (i * 0.15)}
-                  className="hover:opacity-100 transition-opacity cursor-pointer"
+        {levels.map(level => {
+          const count = data[level] || 0;
+          const percentage = total > 0 ? (count / total) * 100 : 0;
+          return (
+            <div key={level} className="space-y-1">
+              <div className="flex justify-between text-[10px] font-mono text-neutral-500 uppercase tracking-widest">
+                <span>{level}</span>
+                <span className="text-fg font-bold">{count}</span>
+              </div>
+              <div className="h-[2px] bg-neutral-800/50 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full ${colors[level]} transition-all duration-1000`} 
+                  style={{ width: `${percentage}%` }}
                 />
-              );
-            })}
-            <circle cx="50" cy="50" r="25" fill="black" />
-          </svg>
-        </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const ThreatTypeChart = ({ data }) => {
+    if (!data || data.length === 0) {
+      return <div className="h-48 flex items-center justify-center text-neutral-600">No threat data</div>;
+    }
+
+    return (
+      <div className="space-y-4">
         <div className="space-y-2">
           {data.map((item, i) => (
-            <div key={i} className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-white rounded" style={{ opacity: 0.9 - (i * 0.15) }} />
-                <span className="text-neutral-300">{item._id}</span>
-              </div>
-              <span className="text-white font-medium">{item.count}</span>
+            <div key={i} className="flex items-center justify-between text-sm py-2 border-b border-border">
+              <span className="text-neutral-500 font-mono text-xs uppercase">{item._id}</span>
+              <span className="text-fg font-bold">{item.count}</span>
             </div>
           ))}
         </div>
@@ -309,10 +288,10 @@ const GuardianIDSDashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-black">
+      <div className="flex items-center justify-center h-screen bg-bg">
         <div className="text-center">
-          <Shield size={48} className="text-white mx-auto mb-4 animate-pulse" />
-          <p className="text-neutral-400">Loading dashboard...</p>
+          <Shield size={48} className="text-fg mx-auto mb-4 animate-pulse" />
+          <p className="text-neutral-500">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -320,13 +299,13 @@ const GuardianIDSDashboard = () => {
 
   if (!dashboardData) {
     return (
-      <div className="flex items-center justify-center h-screen bg-black">
+      <div className="flex items-center justify-center h-screen bg-bg">
         <div className="text-center">
           <AlertTriangle size={48} className="text-red-500 mx-auto mb-4" />
-          <p className="text-neutral-400">Failed to load dashboard data</p>
+          <p className="text-neutral-500">Failed to load dashboard data</p>
           <button
             onClick={fetchDashboardData}
-            className="mt-4 px-4 py-2 bg-white text-black rounded hover:bg-neutral-200"
+            className="mt-4 px-4 py-2 bg-fg text-bg rounded hover:opacity-90 transition-opacity"
           >
             Retry
           </button>
@@ -335,81 +314,109 @@ const GuardianIDSDashboard = () => {
     );
   }
 
-  const { summary, attack_type_breakdown, top_countries, top_ips, timeline, recent_attacks } = dashboardData;
+  const PortBarList = ({ data }) => {
+    if (!data || data.length === 0) return null;
+    const top3 = data.slice(0, 3);
+    const maxCount = top3[0]?.count || 1;
+
+    return (
+      <div className="space-y-5 py-2">
+        {top3.map((item, i) => (
+          <div key={i} className="space-y-1.5">
+            <div className="flex justify-between text-[10px] font-mono tracking-tighter">
+              <div className="flex items-center gap-2">
+                <span className="text-fg font-bold">PORT {item._id}</span>
+              </div>
+              <span className="text-neutral-600 dark:text-neutral-400">{item.count.toLocaleString()} FLOWS</span>
+            </div>
+            <div className="h-1 bg-border rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-accent transition-all duration-1000" 
+                style={{ 
+                  width: `${(item.count / maxCount) * 100}%`,
+                  opacity: 1 - (i * 0.3)
+                }} 
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const { summary, attack_type_breakdown: threat_type_breakdown, top_countries, top_ips, top_ports, timeline, recent_attacks: recent_threats } = dashboardData;
 
   return (
-    <div className="space-y-8">
+    <div className="h-[calc(100vh-120px)] flex flex-col gap-6 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-light mb-2">Security Dashboard</h1>
-          <p className="text-neutral-400 text-sm">Real-time threat monitoring and analysis</p>
+          <div className="flex items-center gap-3">
+            <p className="text-neutral-400 text-sm">Real-time threat monitoring and analysis</p>
+            <span className="text-neutral-700">|</span>
+            <div className="flex items-center gap-2 text-xs font-mono">
+              <span className="text-neutral-500 uppercase tracking-tighter">Peak Threat:</span>
+              <span className="text-fg font-bold">{summary?.peak_hour || 'N/A'}</span>
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className={`h-2 w-2 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-            <span className="text-xs text-neutral-400">{wsConnected ? 'Live' : 'Offline'}</span>
+          <div className="flex items-center gap-2 bg-sidebar border border-border px-3 py-1.5 rounded-full">
+            <div className={`h-1.5 w-1.5 rounded-full ${wsConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
+              {wsConnected ? 'Live' : 'Offline'}
+            </span>
           </div>
-          <select
-            value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value)}
-            className="bg-neutral-900 border border-neutral-800 rounded px-3 py-2 text-sm text-white"
-          >
-            <option value="1h">Last Hour</option>
-            <option value="6h">Last 6 Hours</option>
-            <option value="24h">Last 24 Hours</option>
-            <option value="7d">Last 7 Days</option>
-            <option value="30d">Last 30 Days</option>
-          </select>
         </div>
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
-          label="Total Attacks"
+          label="Malicious Flows"
           value={summary?.total_attacks?.toLocaleString() || '0'}
-          subtitle={`${timeRange.toUpperCase()} period`}
-          icon={AlertTriangle}
+          subtitle="Detected today"
         />
         <StatCard
-          label="Attack Rate"
+          label="Malicious Rate"
           value={summary?.attack_rate ? `${summary.attack_rate.toFixed(1)}%` : '0%'}
-          subtitle="of total traffic"
-          trend={summary?.attack_rate > 10 ? 'up' : 'down'}
-          icon={TrendingUp}
+          subtitle="Threat density"
         />
         <StatCard
-          label="Avg Threat Level"
-          value={summary?.avg_threat_level?.toFixed(1) || '0.0'}
-          subtitle="out of 10"
-          badge={summary?.threat_level}
-          icon={Shield}
-        />
-        <StatCard
-          label="Total Flows"
-          value={summary?.total_flows?.toLocaleString() || '0'}
-          subtitle={`${summary?.benign_flows?.toLocaleString() || '0'} benign`}
-          icon={Activity}
+          label="Top Threat Actor"
+          value={top_ips?.[0]?._id || 'N/A'}
+          subtitle={`${top_ips?.[0]?.count || 0} hits from ${top_ips?.[0]?.country || 'Unknown'}`}
         />
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 gap-6">
-        <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-6 shadow-xl">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-light">Attack Timeline</h3>
-            <button className="text-neutral-400 hover:text-white">
-              <Download size={18} />
-            </button>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 flex-1 min-h-0">
+        <div className="lg:col-span-3 bg-card border border-border rounded-lg p-4 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium uppercase tracking-widest text-neutral-500">Threat Timeline</h3>
           </div>
-          <TimelineChart data={timeline} timeRange={timeRange} />
+          <div className="flex-1 min-h-0">
+            <TimelineChart data={timeline} timeRange={timeRange} />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4 min-h-0">
+          <div className="bg-card border border-border rounded-lg p-4 shadow-sm flex-1 flex flex-col">
+            <h3 className="text-[10px] font-bold mb-4 uppercase tracking-widest text-neutral-500">Severity</h3>
+            <div className="flex-1 overflow-auto">
+              <SeverityDistribution data={summary?.severity_distribution} total={summary?.total_attacks} />
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-lg p-4 shadow-sm">
+            <h3 className="text-[10px] font-bold mb-4 uppercase tracking-widest text-neutral-500">Targeted Ports</h3>
+            <PortBarList data={top_ports} />
+          </div>
         </div>
       </div>
-
-      {/* Live Activity Feed Removed */}
     </div>
   );
 };
 
-export default GuardianIDSDashboard;
+export default IntelligentIDSDashboard;

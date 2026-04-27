@@ -8,6 +8,10 @@ import sys
 import os
 import argparse
 import time
+import os
+import json
+import csv
+import ipaddress
 import signal
 import threading
 import pandas as pd
@@ -74,9 +78,27 @@ class DatasetCapturer:
             pass
 
     def _init_flow(self, key, ip, src_port, dst_port, ts):
+        src_ip = ip.src
+        dst_ip = ip.dst
+        s_port = src_port
+        d_port = dst_port
+
+        # Swapping logic: If the source is a local/private IP and the destination is external,
+        # it means we are capturing an outgoing response. Swap them to ensure the 
+        # External IP is marked as the 'Source' (Attacker).
+        try:
+            src_is_private = ipaddress.ip_address(src_ip).is_private
+            dst_is_private = ipaddress.ip_address(dst_ip).is_private
+            
+            if src_is_private and not dst_is_private:
+                src_ip, dst_ip = dst_ip, src_ip
+                s_port, d_port = d_port, s_port
+        except Exception:
+            pass
+
         return {
-            'flow_id': key, 'src_ip': ip.src, 'dst_ip': ip.dst,
-            'src_port': src_port, 'dst_port': dst_port, 'protocol': ip.proto,
+            'flow_id': key, 'src_ip': src_ip, 'dst_ip': dst_ip,
+            'src_port': s_port, 'dst_port': d_port, 'protocol': ip.proto,
             'timestamp': datetime.fromtimestamp(ts).strftime('%d/%m/%Y %H:%M:%S'),
             'start_time': ts, 'last_time': ts, 'fwd_packets': 0, 'bwd_packets': 0,
             'fwd_bytes': 0, 'bwd_bytes': 0, 'fwd_header_bytes': 0, 'bwd_header_bytes': 0,

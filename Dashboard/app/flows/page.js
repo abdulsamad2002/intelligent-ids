@@ -70,14 +70,23 @@ const FlowsPage = () => {
     }
   };
 
-  // Helper to get country flag emoji
-  const getFlagEmoji = (countryCode) => {
-    if (!countryCode || countryCode === 'Unknown' || countryCode === 'LCL') return '🌐';
-    const codePoints = countryCode
-      .toUpperCase()
-      .split('')
-      .map(char =>  127397 + char.charCodeAt());
-    return String.fromCodePoint(...codePoints);
+  // Helper to get country flag SVG
+  const getFlagSVG = (countryCode) => {
+    if (!countryCode || countryCode === 'Unknown' || countryCode === 'LCL') {
+      return <span className="mr-2 text-neutral-600">🌐</span>;
+    }
+    
+    const code = countryCode.toLowerCase();
+    if (code.length !== 2) return <span className="mr-2 text-neutral-600">🌐</span>;
+
+    return (
+      <img 
+        src={`https://flagcdn.com/w40/${code}.png`}
+        className="w-4 h-3 inline-block mr-2 rounded-[2px] shadow-sm object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+        alt={countryCode}
+        onError={(e) => { e.target.style.display = 'none'; }}
+      />
+    );
   };
 
   // Helper to format bytes
@@ -93,29 +102,29 @@ const FlowsPage = () => {
     <div className="h-[calc(100vh-50px)] flex flex-col space-y-2">
       <div className="flex justify-between items-end flex-shrink-0 px-1">
         <div>
-          <h2 className="text-2xl font-light text-white mb-1 tracking-tight">Network Traffic Explorer</h2>
+          <h2 className="text-2xl font-light text-fg mb-1 tracking-tight">Network Traffic Explorer</h2>
           <p className="text-neutral-500 text-xs font-medium">Analyzing {totalCount.toLocaleString()} persistent network flows</p>
         </div>
-        <div className="text-[10px] font-black text-neutral-500 bg-neutral-900 px-4 py-1.5 rounded-full border border-neutral-800 tracking-[0.2em] uppercase">
+        <div className="text-[10px] font-black text-neutral-500 bg-card px-4 py-1.5 rounded-full border border-border tracking-[0.2em] uppercase">
           Page {page} / {totalPages}
         </div>
       </div>
       
-      <div className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden shadow-2xl flex flex-col flex-grow">
+      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm flex flex-col flex-grow">
         {/* Scrollable Table Area */}
-        <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
+        <div className="flex-grow overflow-y-auto">
           <table className="w-full border-collapse">
-            <thead className="sticky top-0 z-10 bg-neutral-950 shadow-md">
-              <tr className="border-b border-neutral-700">
-                <th className="px-6 py-4 text-left text-[11px] font-black text-neutral-400 uppercase tracking-widest">Source IP</th>
-                <th className="px-6 py-4 text-left text-[11px] font-black text-neutral-400 uppercase tracking-widest">Destination IP</th>
-                <th className="px-6 py-4 text-left text-[11px] font-black text-neutral-400 uppercase tracking-widest">Protocol</th>
-                <th className="px-6 py-4 text-left text-[11px] font-black text-neutral-400 uppercase tracking-widest">Location</th>
-                <th className="px-6 py-4 text-center text-[11px] font-black text-neutral-400 uppercase tracking-widest">Severity</th>
-                <th className="px-6 py-4 text-right text-[11px] font-black text-neutral-400 uppercase tracking-widest">Size</th>
-                <th className="px-6 py-4 text-right text-[11px] font-black text-neutral-400 uppercase tracking-widest">Confidence</th>
-                <th className="px-6 py-4 text-right text-[11px] font-black text-neutral-400 uppercase tracking-widest">Rate</th>
-                <th className="px-6 py-4 text-right text-[11px] font-black text-neutral-400 uppercase tracking-widest">Duration</th>
+            <thead className="sticky top-0 z-10 bg-sidebar shadow-sm">
+              <tr className="border-b border-border">
+                <th className="px-6 py-4 text-left text-[11px] font-black text-neutral-500 uppercase tracking-widest">Source IP</th>
+                <th className="px-6 py-4 text-left text-[11px] font-black text-neutral-500 uppercase tracking-widest">Destination IP</th>
+                <th className="px-6 py-4 text-left text-[11px] font-black text-neutral-500 uppercase tracking-widest">Protocol</th>
+                <th className="px-6 py-4 text-left text-[11px] font-black text-neutral-500 uppercase tracking-widest">Location</th>
+                <th className="px-6 py-4 text-center text-[11px] font-black text-neutral-500 uppercase tracking-widest">Severity</th>
+                <th className="px-6 py-4 text-right text-[11px] font-black text-neutral-500 uppercase tracking-widest">Size</th>
+                <th className="px-6 py-4 text-right text-[11px] font-black text-neutral-500 uppercase tracking-widest">Confidence</th>
+                <th className="px-6 py-4 text-right text-[11px] font-black text-neutral-500 uppercase tracking-widest">Rate</th>
+                <th className="px-6 py-4 text-right text-[11px] font-black text-neutral-500 uppercase tracking-widest">Duration</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-800/40">
@@ -132,40 +141,40 @@ const FlowsPage = () => {
                 flows.map((flow) => (
                   <tr 
                     key={flow._id} 
-                    className={`group transition-colors duration-150 border-b border-neutral-800/30 ${
+                    className={`group transition-colors duration-150 border-b border-border ${
                       flow.is_malicious 
-                        ? 'bg-red-500/[0.04] hover:bg-red-500/[0.08]' 
-                        : 'bg-blue-500/[0.02] hover:bg-blue-500/[0.06]'
+                        ? 'bg-red-500/[0.03] dark:bg-red-500/[0.04] hover:bg-red-500/[0.08]' 
+                        : 'bg-blue-500/[0.01] dark:bg-blue-500/[0.02] hover:bg-blue-500/[0.06]'
                     }`}
                   >
-                    <td className="px-6 py-3 whitespace-nowrap text-sm font-mono text-neutral-400 group-hover:text-neutral-200">
-                      {flow.src_ip}<span className="text-neutral-700 text-xs ml-1 font-normal">:{flow.src_port}</span>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm font-mono text-fg/70 group-hover:text-fg">
+                      {flow.src_ip}<span className="text-neutral-500 text-xs ml-1 font-normal">:{flow.src_port}</span>
                     </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-sm font-mono text-neutral-400 group-hover:text-neutral-200">
-                      {flow.dst_ip}<span className="text-neutral-700 text-xs ml-1 font-normal">:{flow.dst_port}</span>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm font-mono text-fg/70 group-hover:text-fg">
+                      {flow.dst_ip}<span className="text-neutral-500 text-xs ml-1 font-normal">:{flow.dst_port}</span>
                     </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-[10px] text-neutral-600 font-black group-hover:text-neutral-400 uppercase">
+                    <td className="px-6 py-3 whitespace-nowrap text-[10px] text-neutral-500 font-black group-hover:text-neutral-600 uppercase">
                       {flow.protocol}
                     </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-xs text-neutral-500 group-hover:text-neutral-300">
-                      <span className="mr-2 opacity-70">{getFlagEmoji(flow.src_country)}</span>
+                    <td className="px-6 py-3 whitespace-nowrap text-xs text-neutral-500 group-hover:text-fg/80">
+                      {getFlagSVG(flow.src_country)}
                       {flow.src_city || 'Unknown'}
                     </td>
                     <td className="px-6 py-3 whitespace-nowrap text-center">
-                      <span className="text-[11px] font-black px-3 py-1 rounded-md text-neutral-400 bg-neutral-800 border border-neutral-700">
+                      <span className="text-[11px] font-black px-3 py-1 rounded-md text-fg/60 bg-border border border-border">
                         {flow.severity_score?.toFixed(1) || '0.0'}
                       </span>
                     </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-right text-xs text-neutral-400 font-mono group-hover:text-neutral-200">
+                    <td className="px-6 py-3 whitespace-nowrap text-right text-xs text-fg/70 font-mono group-hover:text-fg">
                       {formatBytes(flow.total_bytes)}
                     </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-right text-xs text-neutral-500 font-mono group-hover:text-neutral-300">
+                    <td className="px-6 py-3 whitespace-nowrap text-right text-xs text-neutral-500 font-mono group-hover:text-fg/80">
                       {(flow.confidence * 100).toFixed(0)}%
                     </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-right text-[10px] text-neutral-600 font-mono group-hover:text-neutral-400">
+                    <td className="px-6 py-3 whitespace-nowrap text-right text-[10px] text-neutral-500 font-mono group-hover:text-neutral-600">
                       {flow.flow_packets_per_sec?.toFixed(1) || '0'} p/s
                     </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-right text-xs text-neutral-400 font-mono group-hover:text-neutral-200">
+                    <td className="px-6 py-3 whitespace-nowrap text-right text-xs text-fg/70 font-mono group-hover:text-fg">
                       {flow.duration?.toFixed(3) || '0.000'}s
                     </td>
                   </tr>
@@ -182,9 +191,9 @@ const FlowsPage = () => {
         </div>
 
         {/* Fixed Pagination Footer (Slim) */}
-        <div className="bg-neutral-950/90 backdrop-blur-md px-6 py-2.5 border-t border-neutral-800 flex items-center justify-between flex-shrink-0">
-          <div className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest">
-            Showing <span className="text-neutral-400">{(page - 1) * limit + 1}</span>—<span className="text-neutral-400">{Math.min(page * limit, totalCount)}</span> of <span className="text-neutral-400">{totalCount}</span>
+        <div className="bg-sidebar px-6 py-2.5 border-t border-border flex items-center justify-between flex-shrink-0">
+          <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
+            Showing <span className="text-fg/80">{(page - 1) * limit + 1}</span>—<span className="text-fg/80">{Math.min(page * limit, totalCount)}</span> of <span className="text-fg/80">{totalCount}</span>
           </div>
           <div className="flex space-x-2">
             <button
@@ -192,8 +201,8 @@ const FlowsPage = () => {
               disabled={page === 1}
               className={`px-5 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md border transition-all duration-200 ${
                 page === 1 
-                  ? 'border-neutral-800 text-neutral-800 cursor-not-allowed' 
-                  : 'border-neutral-700 text-neutral-400 hover:border-neutral-500 hover:text-white bg-neutral-900/50'
+                  ? 'border-border text-neutral-300 dark:text-neutral-800 cursor-not-allowed' 
+                  : 'border-border text-fg/60 hover:border-accent hover:text-accent bg-bg shadow-sm'
               }`}
             >
               Prev
@@ -203,8 +212,8 @@ const FlowsPage = () => {
               disabled={page === totalPages}
               className={`px-5 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md border transition-all duration-200 ${
                 page === totalPages 
-                  ? 'border-neutral-800 text-neutral-800 cursor-not-allowed' 
-                  : 'border-neutral-700 text-neutral-400 hover:border-neutral-500 hover:text-white bg-neutral-900/50'
+                  ? 'border-border text-neutral-300 dark:text-neutral-800 cursor-not-allowed' 
+                  : 'border-border text-fg/60 hover:border-accent hover:text-accent bg-bg shadow-sm'
               }`}
             >
               Next

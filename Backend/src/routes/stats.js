@@ -47,9 +47,8 @@ router.get('/', async (req, res) => {
     // 2. Total flows (all)
     const totalFlows = await Flow.countDocuments(dateFilter);
 
-    // 3. Attack rate (attacks per hour)
-    const hoursDiff = (endDate - startDate) / 3600000;
-    const attackRate = (totalAttacks / hoursDiff).toFixed(1);
+    // 3. Malicious rate (percentage of total flows)
+    const attackRate = (totalAttacks / (totalFlows || 1) * 100).toFixed(1);
 
     // 4. Average threat level
     const avgThreatResult = await Flow.aggregate([
@@ -132,6 +131,42 @@ router.get('/', async (req, res) => {
       { $sort: { _id: 1 } }
     ]);
 
+    // 9.5 Calculate Critical Attacks and Peak Hour
+    const criticalAttacks = await Flow.countDocuments({
+      ...dateFilter,
+      is_malicious: true,
+      severity_score: { $gte: 9 }
+    });
+
+    const peakHourData = timelineData.reduce((max, curr) => 
+      (curr.maliciousFlows > (max?.maliciousFlows || 0)) ? curr : max, 
+      null
+    );
+    const peakHour = peakHourData ? new Date(peakHourData._id).getHours() : null;
+
+    // 9.7 Severity Distribution
+    const severityDist = await Flow.aggregate([
+      { $match: { ...dateFilter, is_malicious: true } },
+      {
+        $group: {
+          _id: {
+            $switch: {
+              branches: [
+                { case: { $lt: ["$severity_score", 4] }, then: "LOW" },
+                { case: { $lt: ["$severity_score", 7] }, then: "MEDIUM" },
+                { case: { $lt: ["$severity_score", 9] }, then: "HIGH" }
+              ],
+              default: "CRITICAL"
+            }
+          },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const severityMap = { LOW: 0, MEDIUM: 0, HIGH: 0, CRITICAL: 0 };
+    severityDist.forEach(item => { severityMap[item._id] = item.count; });
+
     // 10. Recent attacks (last 10)
     const recentAttacks = await Flow.find({
       ...dateFilter,
@@ -148,11 +183,12 @@ router.get('/', async (req, res) => {
         summary: {
           total_attacks: totalAttacks,
           total_flows: totalFlows,
-          benign_flows: totalFlows - totalAttacks,
+          critical_attacks: criticalAttacks,
+          peak_hour: peakHour !== null ? `${peakHour.toString().padStart(2, '0')}:00` : 'N/A',
+          severity_distribution: severityMap,
           attack_rate: parseFloat(attackRate),
           avg_threat_level: parseFloat(avgThreat),
           threat_level: threatLevel,
-          time_range: time_range,
           start_date: startDate,
           end_date: endDate
         },
