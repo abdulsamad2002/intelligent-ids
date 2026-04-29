@@ -252,4 +252,29 @@ router.get('/summary', async (req, res) => {
   }
 });
 
+// GET /api/stats/map - Unique malicious IPs today with coordinates
+router.get('/map', async (req, res) => {
+  try {
+    const now = new Date();
+    const last24h = new Date(now - 86400000); // last 24 hours
+
+    const uniqueIPs = await Flow.aggregate([
+      { $match: { timestamp: { $gte: last24h }, is_malicious: true } },
+      { $group: {
+          _id: '$src_ip',
+          src_country: { $first: '$src_country' },
+          src_longitude: { $first: '$src_longitude' },
+          src_latitude: { $first: '$src_latitude' },
+          count: { $sum: 1 },
+          severity_score: { $max: '$severity_score' }
+        }
+      }
+    ]);
+
+    res.json({ success: true, data: uniqueIPs });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;

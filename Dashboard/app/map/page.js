@@ -38,7 +38,7 @@ const ThreatMapPage = () => {
   const fetchData = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${BACKEND_URL}/api/alerts?limit=100`, {
+      const res = await fetch(`${BACKEND_URL}/api/stats/map`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
