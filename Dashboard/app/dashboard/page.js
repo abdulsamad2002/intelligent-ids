@@ -190,37 +190,40 @@ const IntelligentIDSDashboard = () => {
     const buckets = processData();
 
     return (
-      <div className="h-full w-full">
-        <div className="flex items-end justify-between h-full gap-[2px] px-1 relative">
+      <div className="h-full w-full flex flex-col">
+        <div className="flex items-end justify-between flex-1 gap-[2px] px-1 relative min-h-0">
           {buckets.map((b, i) => {
             return (
-              <div key={i} className="flex-1 flex flex-col items-center h-full justify-end group relative">
-                {/* Background Bar (Total Capacity) */}
-                <div className="absolute inset-x-0 bottom-0 top-0 bg-sidebar rounded-t-[1px] transition-colors group-hover:bg-neutral-500/10" />
-                
-                {/* Malicious Fill (Percentage) */}
-                <div 
-                  className={`w-full transition-all duration-700 ease-out rounded-t-[1px] relative z-10 ${
-                    b.malicious > 0 
-                      ? 'bg-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.2)]' 
-                      : 'bg-transparent'
-                  }`}
-                  style={{ height: `${b.percentage}%` }}
-                >
-                  {b.malicious > 0 && (
-                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[8px] font-bold text-accent">
-                      {Math.round(b.percentage)}%
-                    </div>
-                  )}
-                </div>
-                
-                {/* Tooltip Flyout */}
-                <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-card border border-border text-fg text-[9px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-30 font-black uppercase tracking-tighter shadow-xl">
-                  {b.percentage.toFixed(1)}% Malicious ({b.malicious}/{b.total})
+              <div key={i} className="flex-1 flex flex-col h-full group">
+                {/* Bar Container */}
+                <div className="flex-1 relative flex flex-col justify-end w-full">
+                  {/* Background Bar (Total Capacity) */}
+                  <div className="absolute inset-0 bg-sidebar rounded-t-[1px] transition-colors group-hover:bg-neutral-500/10" />
+                  
+                  {/* Malicious Fill (Percentage) */}
+                  <div 
+                    className={`w-full transition-all duration-700 ease-out rounded-t-[1px] relative z-10 ${
+                      b.malicious > 0 
+                        ? 'bg-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.2)]' 
+                        : 'bg-transparent'
+                    }`}
+                    style={{ height: `${b.percentage}%` }}
+                  >
+                    {b.malicious > 0 && (
+                      <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[8px] font-bold text-accent">
+                        {Math.round(b.percentage)}%
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Tooltip Flyout */}
+                  <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-card border border-border text-fg text-[9px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-30 font-black uppercase tracking-tighter shadow-xl">
+                    {b.percentage.toFixed(1)}% Malicious ({b.malicious}/{b.total})
+                  </div>
                 </div>
 
                 {/* Direct Hourly Label */}
-                <div className="mt-4 pt-2 border-t border-border w-full text-center">
+                <div className="pt-2 mt-2 border-t border-border w-full text-center shrink-0">
                   <span className="text-[9px] font-bold text-neutral-500 uppercase">
                     {b.label}
                   </span>
